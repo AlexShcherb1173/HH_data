@@ -1,5 +1,5 @@
-# hh.ru API позволяет запросы по работодателю и /vacancies. Подберите 15 employer_id вручную (или заранее).
-
+# hh.ru API позволяет запросы по работодателю и /vacancies.
+# использует requests, реализует класс для получения компаний и вакансий
 
 import requests
 from typing import Dict, List, Optional
@@ -19,7 +19,7 @@ class HHApiClient:
         return resp.json()
 
     def get_vacancies_for_employer(self, employer_id: int, per_page: int = 100) -> List[Dict]:
-        """Получить список вакансий работодателя (пагинация)."""
+        """Получить список вакансий работодателя"""
         results = []
         page = 0
         while True:

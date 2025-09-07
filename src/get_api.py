@@ -9,16 +9,19 @@ from typing import List, Dict
 BASE_URL = "https://api.hh.ru"
 
 
-def get_top_employers(query: str, top_n: int = 15) -> List[Dict]:
+def get_top_russian_companies(top_n: int = 15) -> List[Dict]:
     """
-    Получает топ-N компаний по ключевому слову с hh.ru.
+    Получает топ-N компаний РФ с hh.ru (по количеству вакансий).
 
-    :param query: поисковый запрос (например, 'банк', 'it', 'python')
     :param top_n: сколько компаний вернуть (по умолчанию 15)
     :return: список словарей с id, названием и количеством вакансий
     """
     url = f"{BASE_URL}/employers"
-    params = {"text": query, "per_page": top_n}
+    params = {
+        "area": 113,        # Россия (код региона в hh.ru API)
+        "per_page": top_n,
+        "only_with_vacancies": True
+    }
     response = requests.get(url, params=params)
 
     if response.status_code != 200:
@@ -29,12 +32,11 @@ def get_top_employers(query: str, top_n: int = 15) -> List[Dict]:
     data = response.json()
     employers = data.get("items", [])
 
-    # Сократим до нужного количества
-    result = []
-    for emp in employers[:top_n]:
-        result.append({
+    return [
+        {
             "id": emp["id"],
             "name": emp["name"],
             "open_vacancies": emp.get("open_vacancies", 0),
-        })
-    return result
+        }
+        for emp in employers[:top_n]
+    ]

@@ -1,12 +1,13 @@
+# Полная реализация с методами по критериям
+
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import List, Dict, Optional
 from config import DB
 
 class DBManager:
-    """
-    Менеджер для работы с базой hh_schema.
-    """
+    """Менеджер для работы с базой hh_schema."""
 
     def __init__(self, db_config=DB):
         self._db_config = db_config
@@ -81,9 +82,7 @@ class DBManager:
     # ==== Запрошенные методы ====
 
     def get_companies_and_vacancies_count(self) -> List[Dict]:
-        """
-        Возвращает список всех компаний с количеством вакансий у каждой.
-        """
+        """Возвращает список всех компаний с количеством вакансий у каждой."""
         sql = """
         SELECT c.company_id, c.name, COUNT(v.vacancy_id) AS vacancies_count
         FROM hh_schema.companies c
@@ -97,9 +96,7 @@ class DBManager:
                 return cur.fetchall()
 
     def get_all_vacancies(self) -> List[Dict]:
-        """
-        Список всех вакансий с указанием названия компании, названия вакансии, зарплаты и ссылки.
-        """
+        """Список всех вакансий с указанием названия компании, названия вакансии, зарплаты и ссылки."""
         sql = """
         SELECT v.vacancy_id, c.name AS company, v.name AS vacancy, v.salary_from, v.salary_to, v.salary_currency, v.url
         FROM hh_schema.vacancies v
@@ -112,9 +109,7 @@ class DBManager:
                 return cur.fetchall()
 
     def get_avg_salary(self) -> Optional[float]:
-        """
-        Средняя зарплата по вакансиям. Берём среднее по (salary_from + salary_to)/2 для записей, где есть числа.
-        """
+        """Средняя зарплата по вакансиям. Берём среднее по (salary_from + salary_to)/2 для записей, где есть числа."""
         sql = """
         SELECT AVG((COALESCE(salary_from, salary_to) + COALESCE(salary_to, salary_from)) / 2.0) AS avg_salary
         FROM hh_schema.vacancies
