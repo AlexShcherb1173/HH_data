@@ -1,8 +1,8 @@
 # Модуль обработки вакансий и загрузки
 
 
-from it_api.hh_api import HHApiClient
-from db_manager.db_manager import DBManager
+from src.hh_api import HHApiClient
+from src.db_manager import DBManager
 from typing import List
 
 class VacanciesLoader:
