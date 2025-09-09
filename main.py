@@ -43,8 +43,8 @@ def main() -> None:
     return COMPANIES
 
 
-# if __name__ == "__main__":
-#     COMPANIES = main()
+if __name__ == "__main__":
+     COMPANIES: None = main()
 
 def main():
     client = HHApiClient()

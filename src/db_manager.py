@@ -25,7 +25,7 @@ class DBManager:
         """Создать таблицы (если не существуют)."""
         with self._get_conn() as conn:
             with conn.cursor() as cur:
-                with open("db/create_db.sql", "r", encoding="utf-8") as f:
+                with open("data/create_db.sql", "r", encoding="utf-8") as f:
                     cur.execute(f.read())
             conn.commit()
 
