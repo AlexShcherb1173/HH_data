@@ -82,13 +82,16 @@ class DBManager:
     # ==== Запрошенные методы ====
 
     def get_companies_and_vacancies_count(self) -> List[Dict]:
-        """Возвращает список всех компаний с количеством вакансий у каждой."""
+        """ Возвращает список всех компаний и количество вакансий у каждой.
+        Используется SQL-запрос с JOIN."""
         sql = """
-        SELECT c.company_id, c.name, COUNT(v.vacancy_id) AS vacancies_count
-        FROM hh_schema.companies c
-        LEFT JOIN hh_schema.vacancies v ON c.company_id = v.company_id
-        GROUP BY c.company_id, c.name
-        ORDER BY vacancies_count DESC;
+            SELECT c.company_id,
+                   c.name AS company_name,
+                   COUNT(v.vacancy_id) AS vacancies_count
+            FROM hh_schema.companies c
+            JOIN hh_schema.vacancies v ON c.company_id = v.company_id
+            GROUP BY c.company_id, c.name
+            ORDER BY vacancies_count DESC;
         """
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -96,12 +99,23 @@ class DBManager:
                 return cur.fetchall()
 
     def get_all_vacancies(self) -> List[Dict]:
-        """Список всех вакансий с указанием названия компании, названия вакансии, зарплаты и ссылки."""
+        """Возвращает список всех вакансий с указанием:
+        - название компании
+        - название вакансии
+        - зарплата (от, до, валюта)
+        - ссылка на вакансию
+        Используется SQL-запрос с JOIN."""
         sql = """
-        SELECT v.vacancy_id, c.name AS company, v.name AS vacancy, v.salary_from, v.salary_to, v.salary_currency, v.url
-        FROM hh_schema.vacancies v
-        JOIN hh_schema.companies c ON v.company_id = c.company_id
-        ORDER BY v.vacancy_id;
+            SELECT v.vacancy_id,
+                   c.name AS company_name,
+                   v.name AS vacancy_name,
+                   v.salary_from AS salary_from,
+                   v.salary_to AS salary_to,
+                   v.salary_currency AS currency,
+                   v.url AS vacancy_url
+            FROM hh_schema.vacancies v
+            JOIN hh_schema.companies c ON v.company_id = c.company_id
+            ORDER BY v.vacancy_id;
         """
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -109,46 +123,72 @@ class DBManager:
                 return cur.fetchall()
 
     def get_avg_salary(self) -> Optional[float]:
-        """Средняя зарплата по вакансиям. Берём среднее по (salary_from + salary_to)/2 для записей, где есть числа."""
+        """Возвращает среднюю зарплату по всем вакансиям.
+        Среднее считается по формуле:
+        (salary_from + salary_to) / 2,
+        где хотя бы одно из полей не пустое.
+        Используется SQL с функцией AVG."""
         sql = """
-        SELECT AVG((COALESCE(salary_from, salary_to) + COALESCE(salary_to, salary_from)) / 2.0) AS avg_salary
-        FROM hh_schema.vacancies
-        WHERE salary_from IS NOT NULL OR salary_to IS NOT NULL;
+            SELECT AVG((COALESCE(salary_from, salary_to) + COALESCE(salary_to, salary_from)) / 2.0) AS avg_salary
+            FROM hh_schema.vacancies
+            WHERE salary_from IS NOT NULL OR salary_to IS NOT NULL;
         """
         with self._get_conn() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(sql)
                 row = cur.fetchone()
-                return row[0] if row else None
+                return row["avg_salary"] if row else None
 
     def get_vacancies_with_higher_salary(self) -> List[Dict]:
-        """Возвращает вакансии с зарплатой выше средней."""
+        """Возвращает список вакансий с зарплатой выше средней по всем вакансиям.
+        Средняя зарплата берётся из метода get_avg_salary()."""
         avg = self.get_avg_salary()
         if avg is None:
             return []
+
         sql = """
-        SELECT v.vacancy_id, c.name AS company, v.name AS vacancy, v.salary_from, v.salary_to, v.salary_currency, v.url
-        FROM hh_schema.vacancies v
-        JOIN hh_schema.companies c ON v.company_id = c.company_id
-        WHERE ((COALESCE(v.salary_from, v.salary_to) + COALESCE(v.salary_to, v.salary_from)) / 2.0) > %s
-        ORDER BY (COALESCE(v.salary_from, v.salary_to) + COALESCE(v.salary_to, v.salary_from)) / 2.0 DESC;
+            SELECT v.vacancy_id,
+                   c.name AS company,
+                   v.name AS vacancy,
+                   v.salary_from,
+                   v.salary_to,
+                   v.salary_currency,
+                   v.url,
+                   (COALESCE(v.salary_from, v.salary_to) + COALESCE(v.salary_to, v.salary_from)) / 2.0 AS avg_salary_calc
+            FROM hh_schema.vacancies v
+            JOIN hh_schema.companies c ON v.company_id = c.company_id
+            WHERE (COALESCE(v.salary_from, v.salary_to) + COALESCE(v.salary_to, v.salary_from)) / 2.0 > %s
+            ORDER BY avg_salary_calc DESC;
         """
+
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(sql, (avg,))
                 return cur.fetchall()
 
-    def get_vacancies_with_keyword(self, keyword: str) -> List[Dict]:
-        """Все вакансии, в названии которых есть keyword (регистронезависимо)."""
-        like_expr = f"%{keyword}%"
-        sql = """
-        SELECT v.vacancy_id, c.name AS company, v.name AS vacancy, v.salary_from, v.salary_to, v.salary_currency, v.url
-        FROM hh_schema.vacancies v
-        JOIN hh_schema.companies c ON v.company_id = c.company_id
-        WHERE v.name ILIKE %s
-        ORDER BY v.vacancy_id;
+    def get_vacancies_with_keywords(self, keywords: str) -> List[Dict]:
+        """Возвращает список вакансий, в названии которых содержатся все переданные слова (регистронезависимо).
+        Пример: keywords="python developer" -> ищет вакансии, где есть и 'python', и 'developer'."""
+        words = keywords.strip().split()
+        conditions = " AND ".join(["v.name ILIKE %s" for _ in words])
+
+        sql = f"""
+            SELECT v.vacancy_id,
+                   c.name AS company,
+                   v.name AS vacancy,
+                   v.salary_from,
+                   v.salary_to,
+                   v.salary_currency,
+                   v.url
+            FROM hh_schema.vacancies v
+            JOIN hh_schema.companies c ON v.company_id = c.company_id
+            WHERE {conditions}
+            ORDER BY v.vacancy_id;
         """
+
+        like_patterns = [f"%{word}%" for word in words]
+
         with self._get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(sql, (like_expr,))
+                cur.execute(sql, like_patterns)
                 return cur.fetchall()
