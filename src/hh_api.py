@@ -6,7 +6,7 @@ import requests
 from dotenv import load_dotenv
 import certifi
 from typing import List, Dict, Optional, Tuple
-from services import safe_get_salary
+from src.services import safe_get_salary
 
 load_dotenv(encoding="utf-8")
 

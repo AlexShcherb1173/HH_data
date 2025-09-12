@@ -153,51 +153,148 @@
 # if __name__ == "__main__":
 #     main()
 
-from src.db_manager import DBManager, DBConfig
-from src.hh_api import HHApi
+# from src.db_manager import DBManager, DBConfig
+# from src.hh_api import HHApi
+# import os
+# from dotenv import load_dotenv
+# from src.services import format_vacancy
+#
+#
+# load_dotenv()
+#
+#
+#
+# def user_interface(dbm: DBManager):
+#     """
+#     Простой текстовый интерфейс для поиска вакансий по ключевому слову.
+#     """
+#     keyword = input("Введите ключевое слово для поиска вакансий: ").strip()
+#     results = dbm.get_vacancies_with_keyword(keyword)
+#     if not results:
+#         print("Вакансии не найдены.")
+#         return
+#     for vac in results:
+#         print(format_vacancy(vac))
+#
+# def main():
+#     db_config = DBConfig(
+#         name=os.getenv("DB_NAME"),
+#         user=os.getenv("DB_USER"),
+#         password=os.getenv("DB_PASSWORD"),
+#         host=os.getenv("DB_HOST"),
+#         port=int(os.getenv("DB_PORT"))
+#     )
+#     dbm = DBManager(db_config)
+#     dbm.create_tables()
+#
+#     hh = HHApi()
+#     companies = hh.get_companies()  # топ-15 IT компаний
+#     dbm.insert_companies(companies)
+#
+#     for c in companies:
+#         vacancies = hh.get_vacancies_for_company(c["id"])
+#         dbm.insert_vacancies(vacancies)
+#
+#     # Пример использования аналитики
+#     print(dbm.get_companies_and_vacancies_count())
+#     print(dbm.get_all_vacancies())
+#
+# if __name__ == "__main__":
+#     main()
+
 import os
+from src.hh_api import HHApi
+from src.db_manager import DBManager, DBConfig
+from src.work_vacancies import parse_vacancies
+from src.work_files import save_to_json, save_to_csv
+from src. services import format_vacancy
 from dotenv import load_dotenv
-from src.services import format_vacancy
+from tqdm import tqdm  # Для прогресс-бара
 
-
-load_dotenv()
-
-
-
-def user_interface(dbm: DBManager):
-    """
-    Простой текстовый интерфейс для поиска вакансий по ключевому слову.
-    """
-    keyword = input("Введите ключевое слово для поиска вакансий: ").strip()
-    results = dbm.get_vacancies_with_keyword(keyword)
-    if not results:
-        print("Вакансии не найдены.")
-        return
-    for vac in results:
-        print(format_vacancy(vac))
+load_dotenv(encoding="utf-8")
 
 def main():
+    # --- Настройка подключения к базе ---
     db_config = DBConfig(
-        name=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=int(os.getenv("DB_PORT"))
+        name=os.getenv("DB_NAME", "hh_db"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgres"),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", 5432))
     )
-    dbm = DBManager(db_config)
-    dbm.create_tables()
+    db = DBManager(db_config)
+    db.create_tables()
 
+    # --- Создание API клиента HH.ru ---
     hh = HHApi()
-    companies = hh.get_companies()  # топ-15 IT компаний
-    dbm.insert_companies(companies)
 
-    for c in companies:
-        vacancies = hh.get_vacancies_for_company(c["id"])
-        dbm.insert_vacancies(vacancies)
+    # --- Ввод ключевого слова от пользователя ---
+    keyword = input("Введите ключевое слово для поиска вакансий (по умолчанию IT): ").strip()
+    if not keyword:
+        keyword = "IT"
 
-    # Пример использования аналитики
-    print(dbm.get_companies_and_vacancies_count())
-    print(dbm.get_all_vacancies())
+    print(f"\nИщем компании по ключевому слову '{keyword}'...")
+
+    # --- Получаем компании и сохраняем их в БД ---
+    companies = hh.get_companies(text=keyword)
+    db.insert_companies(companies)
+    print(f"Найдено компаний: {len(companies)}")
+
+    all_vacancies = []
+
+    # --- Получаем вакансии для каждой компании с прогресс-баром ---
+    print("\nПолучаем вакансии для компаний...")
+    for company in tqdm(companies, desc="Компании"):
+        vacancies = hh.get_vacancies_for_company(company['id'])
+        # parsed = parse_vacancies(vacancies)
+        db.insert_vacancies(vacancies)
+        all_vacancies.extend(vacancies)
+
+    # --- Сохраняем данные в JSON и CSV ---
+    os.makedirs("data", exist_ok=True)
+    save_to_json("data/companies.json", companies)
+    save_to_json("data/vacancies.json", all_vacancies)
+    if all_vacancies:
+        save_to_csv("data/companies.csv", companies, fieldnames=["id", "name"])
+        save_to_csv(
+            "data/vacancies.csv",
+            all_vacancies,
+            fieldnames=["vacancy_id", "name", "company_id", "salary_from", "salary_to", "salary_currency", "url"]
+        )
+
+    # --- Интерфейс поиска и отображения ---
+    while True:
+        print("\nВыберите действие:")
+        print("1 - Показать все вакансии")
+        print("2 - Показать вакансии с зарплатой выше средней")
+        print("3 - Показать вакансии по ключевому слову")
+        print("0 - Выйти")
+        choice = input("Введите номер действия: ").strip()
+
+        if choice == "1":
+            vacancies = db.get_all_vacancies()
+            for v in vacancies:
+                print(format_vacancy(v))
+
+        elif choice == "2":
+            vacancies = db.get_vacancies_with_higher_salary()
+            for v in vacancies:
+                print(format_vacancy(v))
+
+        elif choice == "3":
+            kw = input("Введите ключевое слово для поиска: ").strip()
+            vacancies = db.get_vacancies_with_keyword(kw)
+            if not vacancies:
+                print("Вакансий не найдено.")
+            else:
+                for v in vacancies:
+                    print(format_vacancy(v))
+
+        elif choice == "0":
+            print("Выход.")
+            break
+        else:
+            print("Некорректный ввод. Попробуйте снова.")
 
 if __name__ == "__main__":
     main()
