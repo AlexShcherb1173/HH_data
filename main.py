@@ -205,7 +205,6 @@
 import os
 from src.hh_api import HHApi
 from src.db_manager import DBManager, DBConfig
-from src.work_vacancies import parse_vacancies
 from src.work_files import save_to_json, save_to_csv
 from src. services import format_vacancy
 from dotenv import load_dotenv
