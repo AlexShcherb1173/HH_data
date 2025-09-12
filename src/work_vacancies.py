@@ -1,6 +1,4 @@
-# Модуль обработки вакансий и загрузки
-
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from src.services import safe_get_salary
 
 
