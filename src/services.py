@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
 
 def safe_get_salary(salary: Optional[Dict]) -> Tuple[Optional[float], Optional[float], Optional[str]]:
@@ -42,7 +42,7 @@ def format_salary(salary_from: Optional[float], salary_to: Optional[float], curr
     return f"до {salary_to} {currency}"  # Если только максимальная зарплата задана, возвращаем: "до 150000 RUB"
 
 
-def format_vacancy(vacancy: Dict) -> str:
+def format_vacancy(vacancy: Dict[str, Any]) -> str:
     """Преобразует данные вакансии в строку для отображения пользователю.
     :param vacancy: словарь с данными вакансии
     :return: человекочитаемая строка"""
@@ -59,7 +59,8 @@ def format_vacancy(vacancy: Dict) -> str:
     # Компания (vacancy.get('company'))
     # Зарплата (вывод из salary_str)
     # Ссылка на вакансию (vacancy.get('url'))
-    return """ f"{vacancy.get('name')} | Компания: {vacancy.get('company')}
-              | Зарплата: {format_salary(
-        vacancy.get("salary_from"), vacancy.get("salary_to"), vacancy.get("salary_currency")}
-        | Ссылка: {vacancy.get('url')}" """
+    return (
+        f"{vacancy.get('name')} | Компания: {vacancy.get('company')} | "
+        f"Зарплата: {format_salary(vacancy.get('salary_from'), vacancy.get('salary_to'), vacancy.get('salary_currency'))} | "
+        f"Ссылка: {vacancy.get('url')}"
+    )
