@@ -4,16 +4,17 @@
 # В этом наборе тестов:#
 # mock_get подменяет requests.Session.get → нет реальных HTTP-запросов.#
 # mock_safe_salary подменяет функцию safe_get_salary, чтобы тест не зависел от её реализации.#
-# Проверяется: фильтрация компаний без вакансий, правильность парсинга вакансий и зарплат, корректная работа при пустом ответе.
+# Проверяется: фильтрация компаний без вакансий, правильность парсинга вакансий и зарплат,
+# корректная работа при пустом ответе.
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from src.hh_api import HHApi
-from src.services import safe_get_salary
+
 
 # --- Тест get_companies --- #
 @patch("src.hh_api.requests.Session.get")
-def test_get_companies(mock_get):
+def test_get_companies(mock_get: MagicMock) -> None:
     # Подменяем ответ API
     mock_response = MagicMock()
     mock_response.raise_for_status = lambda: None
@@ -23,7 +24,7 @@ def test_get_companies(mock_get):
             {"id": "2", "name": "Company2", "open_vacancies": 0},  # Должна быть пропущена
             {"id": "3", "name": "Company3", "open_vacancies": 10},
         ],
-        "pages": 1
+        "pages": 1,
     }
     mock_get.return_value = mock_response
 
@@ -35,18 +36,23 @@ def test_get_companies(mock_get):
     assert companies[1]["id"] == 3
     assert companies[0]["name"] == "Company1"
 
+
 # --- Тест get_vacancies_for_company --- #
 @patch("src.hh_api.safe_get_salary", return_value=(100000, 150000, "RUR"))
 @patch("src.hh_api.requests.Session.get")
-def test_get_vacancies_for_company(mock_get, mock_safe_salary):
+def test_get_vacancies_for_company(mock_get: MagicMock, mock_safe_salary: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status = lambda: None
     mock_response.json.return_value = {
         "items": [
-            {"id": "101", "name": "Dev1", "salary": {"from": 100000, "to": 150000, "currency": "RUR"},
-             "alternate_url": "http://hh.ru/vacancy/101"}
+            {
+                "id": "101",
+                "name": "Dev1",
+                "salary": {"from": 100000, "to": 150000, "currency": "RUR"},
+                "alternate_url": "http://hh.ru/vacancy/101",
+            }
         ],
-        "pages": 1
+        "pages": 1,
     }
     mock_get.return_value = mock_response
 
@@ -63,9 +69,10 @@ def test_get_vacancies_for_company(mock_get, mock_safe_salary):
     assert v["url"] == "http://hh.ru/vacancy/101"
     mock_safe_salary.assert_called_once()
 
+
 # --- Тест обработки пустого ответа --- #
 @patch("src.hh_api.requests.Session.get")
-def test_get_companies_empty(mock_get):
+def test_get_companies_empty(mock_get: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status = lambda: None
     mock_response.json.return_value = {"items": [], "pages": 1}
@@ -75,8 +82,9 @@ def test_get_companies_empty(mock_get):
     companies = api.get_companies("NonExisting")
     assert companies == []
 
+
 @patch("src.hh_api.requests.Session.get")
-def test_get_vacancies_for_company_empty(mock_get):
+def test_get_vacancies_for_company_empty(mock_get: MagicMock) -> None:
     mock_response = MagicMock()
     mock_response.raise_for_status = lambda: None
     mock_response.json.return_value = {"items": [], "pages": 1}

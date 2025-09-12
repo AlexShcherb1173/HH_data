@@ -10,9 +10,13 @@
 # Тестовый кейс для вакансии без ключа employer, чтобы company_id корректно возвращался как None.#
 # Проверка работы функции parse_vacancies на списке вакансий с и без работодателя.
 
+from typing import Any
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch
-from src.work_vacancies import parse_vacancy, parse_vacancies
+
+from src.work_vacancies import parse_vacancies, parse_vacancy
+
 
 @pytest.mark.parametrize(
     "vacancy_input, mock_return, expected",
@@ -24,7 +28,7 @@ from src.work_vacancies import parse_vacancy, parse_vacancies
                 "name": "Python Developer",
                 "employer": {"id": 1},
                 "salary": {"from": 50000, "to": 70000, "currency": "RUB"},
-                "alternate_url": "http://example.com"
+                "alternate_url": "http://example.com",
             },
             (50000, 70000, "RUB"),
             {
@@ -34,8 +38,8 @@ from src.work_vacancies import parse_vacancy, parse_vacancies
                 "salary_from": 50000,
                 "salary_to": 70000,
                 "salary_currency": "RUB",
-                "url": "http://example.com"
-            }
+                "url": "http://example.com",
+            },
         ),
         # Вакансия без зарплаты
         (
@@ -44,7 +48,7 @@ from src.work_vacancies import parse_vacancy, parse_vacancies
                 "name": "Java Developer",
                 "employer": {"id": 2},
                 "salary": None,
-                "alternate_url": "http://example2.com"
+                "alternate_url": "http://example2.com",
             },
             (None, None, None),
             {
@@ -54,8 +58,8 @@ from src.work_vacancies import parse_vacancy, parse_vacancies
                 "salary_from": None,
                 "salary_to": None,
                 "salary_currency": None,
-                "url": "http://example2.com"
-            }
+                "url": "http://example2.com",
+            },
         ),
         # Вакансия без работодателя
         (
@@ -63,7 +67,7 @@ from src.work_vacancies import parse_vacancy, parse_vacancies
                 "id": 125,
                 "name": "Go Developer",
                 "salary": {"from": 60000, "to": 80000, "currency": "USD"},
-                "alternate_url": "http://example3.com"
+                "alternate_url": "http://example3.com",
             },
             (60000, 80000, "USD"),
             {
@@ -73,13 +77,15 @@ from src.work_vacancies import parse_vacancy, parse_vacancies
                 "salary_from": 60000,
                 "salary_to": 80000,
                 "salary_currency": "USD",
-                "url": "http://example3.com"
-            }
-        )
-    ]
+                "url": "http://example3.com",
+            },
+        ),
+    ],
 )
 @patch("src.work_vacancies.safe_get_salary")
-def test_parse_vacancy(mock_safe_get_salary, vacancy_input, mock_return, expected):
+def test_parse_vacancy(
+    mock_safe_get_salary: MagicMock, vacancy_input: dict[str, Any], mock_return: Any, expected: dict[str, Any]
+) -> None:
     mock_safe_get_salary.return_value = mock_return
     result = parse_vacancy(vacancy_input)
     assert result == expected
@@ -87,21 +93,16 @@ def test_parse_vacancy(mock_safe_get_salary, vacancy_input, mock_return, expecte
 
 
 @patch("src.work_vacancies.safe_get_salary")
-def test_parse_vacancies_list_with_missing_employer(mock_safe_get_salary):
+def test_parse_vacancies_list_with_missing_employer(mock_safe_get_salary: MagicMock) -> None:
     vacancies = [
         {
             "id": 1,
             "name": "Python Developer",
             "employer": {"id": 1},
             "salary": {"from": 50000, "to": 70000, "currency": "RUB"},
-            "alternate_url": "http://example.com"
+            "alternate_url": "http://example.com",
         },
-        {
-            "id": 2,
-            "name": "Java Developer",
-            "salary": None,
-            "alternate_url": "http://example2.com"
-        }
+        {"id": 2, "name": "Java Developer", "salary": None, "alternate_url": "http://example2.com"},
     ]
 
     # Возвращаемые значения для двух вакансий
@@ -115,7 +116,7 @@ def test_parse_vacancies_list_with_missing_employer(mock_safe_get_salary):
             "salary_from": 50000,
             "salary_to": 70000,
             "salary_currency": "RUB",
-            "url": "http://example.com"
+            "url": "http://example.com",
         },
         {
             "vacancy_id": 2,
@@ -124,8 +125,8 @@ def test_parse_vacancies_list_with_missing_employer(mock_safe_get_salary):
             "salary_from": None,
             "salary_to": None,
             "salary_currency": None,
-            "url": "http://example2.com"
-        }
+            "url": "http://example2.com",
+        },
     ]
 
     result = parse_vacancies(vacancies)

@@ -1,9 +1,10 @@
-import json
 import csv
-from typing import List, Dict
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Union, cast
 
 
-def save_to_json(filename: str, data: List[Dict]):
+def save_to_json(filename: Union[str, Path], data: Any) -> None:
     """Сохраняет список словарей в JSON файл."""
     # В файле filename появится JSON с красиво отформатированными данными из списка словарей.
     # Определяет функцию save_to_json, которая принимает:
@@ -12,26 +13,27 @@ def save_to_json(filename: str, data: List[Dict]):
 
     # Открывает файл с именем filename для записи ("w") с кодировкой UTF-8.
     with open(filename, "w", encoding="utf-8") as f:
-    # json.dump — функция для записи Python-объектов (списков, словарей) в файл в формате JSON.
-    # ensure_ascii=False — сохраняет кириллицу и другие символы напрямую, а не в виде \uXXXX.
-    # indent=4 — делает JSON «красивым» с отступами 4 пробела для читаемости.
+        # json.dump — функция для записи Python-объектов (списков, словарей) в файл в формате JSON.
+        # ensure_ascii=False — сохраняет кириллицу и другие символы напрямую, а не в виде \uXXXX.
+        # indent=4 — делает JSON «красивым» с отступами 4 пробела для читаемости.
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
-def load_from_json(filename: str) -> List[Dict]:
+def load_from_json(filename: Union[str, Path]) -> List[Dict[str, Any]]:
     """Загружает список словарей из JSON файла."""
     # Определяет функцию load_from_json, которая принимает имя файла (filename)
     # Функция читает содержимое файла и превращает его из формата JSON в Python-объект.
     # В нашем случае ожидается, что JSON содержит список словарей, например вакансий или компаний.
     # После этого функция возвращает этот список.
 
-    with open(filename, "r", encoding="utf-8") as f: # Открывает файл filename для чтения ("r") с кодировкой UTF-8.
-        return json.load(f) # Функция json.load(f) читает содержимое файла и превращает его из
+    with open(filename, "r", encoding="utf-8") as f:  # Открывает файл filename для чтения ("r") с кодировкой UTF-8.
+        data = json.load(f)
+        return cast(List[Dict[str, Any]], data)  # Функция json.load(f) читает содержимое файла и превращает его из
         # формата JSON в Python-объект. В нашем случае ожидается, что JSON содержит список словарей,
         # например вакансий или компаний. После этого функция возвращает этот список.
 
 
-def save_to_csv(filename: str, data: List[Dict], fieldnames: List[str]):
+def save_to_csv(filename: Union[str, Path], data: List[Dict], fieldnames: List[str]) -> None:
     """Сохраняет список словарей в CSV файл."""
     # filename — имя CSV файла, который будет создан или перезаписан.
     # Определяет функцию save_to_json, которая принимает:
@@ -39,8 +41,8 @@ def save_to_csv(filename: str, data: List[Dict], fieldnames: List[str]):
     # fieldnames — список названий столбцов (ключей словарей), которые будут записаны в CSV.
 
     with open(filename, "w", newline="", encoding="utf-8") as f:  # Открытие файла,
-                      # newline="" — предотвращает добавление лишних пустых строк между строками в Windows.
-                      # encoding="utf-8" — сохраняет файл в кодировке UTF-8, чтобы корректно обрабатывать
-        writer = csv.DictWriter(f, fieldnames=fieldnames) # объект, который умеет записывать словари в CSV.
-        writer.writeheader()   # Создаёт первую строку CSV с названиями колонок из fieldnames.
-        writer.writerows(data) # Проходит по списку словарей data и записывает каждую строку в CSV.
+        # newline="" — предотвращает добавление лишних пустых строк между строками в Windows.
+        # encoding="utf-8" — сохраняет файл в кодировке UTF-8, чтобы корректно обрабатывать
+        writer = csv.DictWriter(f, fieldnames=fieldnames)  # объект, который умеет записывать словари в CSV.
+        writer.writeheader()  # Создаёт первую строку CSV с названиями колонок из fieldnames.
+        writer.writerows(data)  # Проходит по списку словарей data и записывает каждую строку в CSV.

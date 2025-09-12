@@ -1,4 +1,5 @@
 from typing import Dict, List
+
 from src.services import safe_get_salary
 
 
@@ -17,13 +18,13 @@ def parse_vacancy(vacancy: Dict) -> Dict:
 
     # Формируем словарь с ключами, которые совпадают с колонками в таблице БД:
     return {
-        "vacancy_id": int(vacancy["id"]),                    # "vacancy_id" — id вакансии.
-        "name": vacancy.get("name"),                         # "name" — название вакансии.
-        "company_id": vacancy.get("employer", {}).get("id"), # "company_id" — ID работодателя (вложено в employer).
-        "salary_from": salary_from,                          # "salary_from" — минимальная и
-        "salary_to": salary_to,                              # "salary_to" — максимальная зарплата.
-        "salary_currency": salary_currency,                  # "salary_currency" — валюта.
-        "url": vacancy.get("alternate_url")                  # "url" — ссылка на вакансию.
+        "vacancy_id": int(vacancy["id"]),  # "vacancy_id" — id вакансии.
+        "name": vacancy.get("name"),  # "name" — название вакансии.
+        "company_id": vacancy.get("employer", {}).get("id"),  # "company_id" — ID работодателя (вложено в employer).
+        "salary_from": salary_from,  # "salary_from" — минимальная и
+        "salary_to": salary_to,  # "salary_to" — максимальная зарплата.
+        "salary_currency": salary_currency,  # "salary_currency" — валюта.
+        "url": vacancy.get("alternate_url"),  # "url" — ссылка на вакансию.
     }
 
 

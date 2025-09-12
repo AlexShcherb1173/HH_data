@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Dict
+from typing import Dict, Optional, Tuple
 
 
 def safe_get_salary(salary: Optional[Dict]) -> Tuple[Optional[float], Optional[float], Optional[str]]:
@@ -33,10 +33,10 @@ def format_salary(salary_from: Optional[float], salary_to: Optional[float], curr
     # Возвращает строку, которая удобно читается человеком.
 
     if salary_from is None and salary_to is None:
-        return "не указана"    # Если оба значения зарплаты отсутствуют, возвращаем "не указана".
+        return "не указана"  # Если оба значения зарплаты отсутствуют, возвращаем "не указана".
     if salary_from is not None and salary_to is not None:
         return f"от {salary_from} до {salary_to} {currency}"  # Если обе границы зарплаты заданы, возвращаем
-                                                              # диапазон, например: "от 100000 до 150000 RUB"
+        # диапазон, например: "от 100000 до 150000 RUB"
     if salary_from is not None:
         return f"от {salary_from} {currency}"  # Если только минимальная зарплата задана, возвращаем: "от 100000 RUB"
     return f"до {salary_to} {currency}"  # Если только максимальная зарплата задана, возвращаем: "до 150000 RUB"
@@ -53,13 +53,13 @@ def format_vacancy(vacancy: Dict) -> str:
     # Извлекаем поля зарплаты из словаря: "salary_from", "salary_to", "salary_currency".    #
     # Вызываем функцию format_salary, которая преобразует их в человекочитаемый вид, например:
     # "от 100000 до 150000 RUB" или "не указана".
-    salary_str = format_salary(vacancy.get("salary_from"),
-                               vacancy.get("salary_to"),
-                               vacancy.get("salary_currency"))
 
     # Формируем строку с ключевой информацией о вакансии:
     # Название вакансии (vacancy.get('name'))
     # Компания (vacancy.get('company'))
     # Зарплата (вывод из salary_str)
     # Ссылка на вакансию (vacancy.get('url'))
-    return f"{vacancy.get('name')} | Компания: {vacancy.get('company')} | Зарплата: {salary_str} | Ссылка: {vacancy.get('url')}"
+    return """ f"{vacancy.get('name')} | Компания: {vacancy.get('company')}
+              | Зарплата: {format_salary(
+        vacancy.get("salary_from"), vacancy.get("salary_to"), vacancy.get("salary_currency")}
+        | Ссылка: {vacancy.get('url')}" """

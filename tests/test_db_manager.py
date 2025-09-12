@@ -11,16 +11,18 @@
 
 
 import unittest
-from unittest.mock import patch, MagicMock
-from src.db_manager import DBManager, DBConfig
+from unittest.mock import MagicMock, patch
+
+from src.db_manager import DBConfig, DBManager
+
 
 class TestDBManager(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         config = DBConfig(name="testdb", user="user", password="pass", host="localhost", port=5432)
         self.db_manager = DBManager(config)
 
     @patch("psycopg2.connect")
-    def test_create_tables(self, mock_connect):
+    def test_create_tables(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
 
@@ -34,8 +36,8 @@ class TestDBManager(unittest.TestCase):
         mock_conn.commit.assert_called_once()
 
     @patch("psycopg2.connect")
-    def test_insert_companies(self, mock_connect):
-        companies = [{"id": 1, "name": "Company1"}, {"id": 2, "name": "Company2"}]
+    def test_insert_companies(self, mock_connect: MagicMock) -> None:
+        companies: list[dict[str, str | int]] = [{"id": 1, "name": "Company1"}, {"id": 2, "name": "Company2"}]
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -49,10 +51,17 @@ class TestDBManager(unittest.TestCase):
         mock_conn.commit.assert_called_once()
 
     @patch("psycopg2.connect")
-    def test_insert_vacancies(self, mock_connect):
+    def test_insert_vacancies(self, mock_connect: MagicMock) -> None:
         vacancies = [
-            {"vacancy_id": 1, "company_id": 1, "name": "Dev", "salary_from": 1000,
-             "salary_to": 2000, "salary_currency": "USD", "url": "http://example.com"}
+            {
+                "vacancy_id": 1,
+                "company_id": 1,
+                "name": "Dev",
+                "salary_from": 1000,
+                "salary_to": 2000,
+                "salary_currency": "USD",
+                "url": "http://example.com",
+            }
         ]
 
         mock_conn = MagicMock()
@@ -67,7 +76,7 @@ class TestDBManager(unittest.TestCase):
         mock_conn.commit.assert_called_once()
 
     @patch("psycopg2.connect")
-    def test_get_companies_and_vacancies_count(self, mock_connect):
+    def test_get_companies_and_vacancies_count(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         expected_result = [{"company_id": 1, "name": "Company1", "vacancies_count": 5}]
@@ -81,7 +90,7 @@ class TestDBManager(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     @patch("psycopg2.connect")
-    def test_get_all_vacancies(self, mock_connect):
+    def test_get_all_vacancies(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         expected_result = [{"vacancy_id": 1, "company": "Company1", "vacancy": "Dev"}]
@@ -95,7 +104,7 @@ class TestDBManager(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     @patch("psycopg2.connect")
-    def test_get_avg_salary(self, mock_connect):
+    def test_get_avg_salary(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
 
@@ -109,7 +118,7 @@ class TestDBManager(unittest.TestCase):
 
     @patch("psycopg2.connect")
     @patch.object(DBManager, "get_avg_salary", return_value=1500.0)
-    def test_get_vacancies_with_higher_salary(self, mock_avg, mock_connect):
+    def test_get_vacancies_with_higher_salary(self, mock_avg: MagicMock, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         expected_result = [{"vacancy_id": 1, "company": "Company1", "vacancy": "Dev"}]
@@ -123,7 +132,7 @@ class TestDBManager(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
     @patch("psycopg2.connect")
-    def test_get_vacancies_with_keyword(self, mock_connect):
+    def test_get_vacancies_with_keyword(self, mock_connect: MagicMock) -> None:
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         expected_result = [{"vacancy_id": 1, "company": "Company1", "vacancy": "Python Dev"}]
