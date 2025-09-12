@@ -1,25 +1,42 @@
 # Модуль обработки вакансий и загрузки
 
+from typing import Dict, List, Tuple
+from src.services import safe_get_salary
 
-from src.hh_api import HHApiClient
-from src.db_manager import DBManager
-from typing import List
 
-class VacanciesLoader:
-    """Класс для загрузки данных из hh.ru в БД."""
+def parse_vacancy(vacancy: Dict) -> Dict:
+    """Преобразует вакансию из API в словарь для вставки в БД.
+    :param vacancy: словарь из API HH
+    :return: словарь с ключами: name, company_id, salary_from, salary_to, salary_currency, url"""
+    # Превращает «сырые» данные из API в аккуратный словарь, который легко вставлять в таблицу vacancies базы данных.
+    # Функция принимает один аргумент vacancy — это словарь, полученный от API HH.ru.
+    # Возвращает новый словарь, пригодный для вставки в базу данных.    #
+    # В нём будут только нужные поля, с понятными ключами.
 
-    def __init__(self, client: HHApiClient, dbm: DBManager):
-        self.client = client
-        self.dbm = dbm
+    # Извлекаем данные о зарплате с помощью функции safe_get_salary.    #
+    # Функция возвращает кортеж (salary_from, salary_to, currency) безопасно, даже если данные отсутствуют.
+    salary_from, salary_to, salary_currency = safe_get_salary(vacancy.get("salary"))
 
-    def load_for_employers(self, employer_ids: List[int]):
-        for emp_id in employer_ids:
-            try:
-                emp = self.client.get_employer(emp_id)
-                self.dbm.upsert_company(emp)
-                vacancies = self.client.get_vacancies_for_employer(emp_id)
-                for vac in vacancies:
-                    self.dbm.upsert_vacancy(vac, emp_id)
-            except Exception as e:
-                # логирование можно добавить
-                print(f"Failed to process employer {emp_id}: {e}")
+    # Формируем словарь с ключами, которые совпадают с колонками в таблице БД:
+    return {
+        "name": vacancy.get("name"),                         # "name" — название вакансии.
+        "company_id": vacancy.get("employer", {}).get("id"), # "company_id" — ID работодателя (вложено в employer).
+        "salary_from": salary_from,                          # "salary_from" — минимальная и
+        "salary_to": salary_to,                              # "salary_to" — максимальная зарплата.
+        "salary_currency": salary_currency,                  # "salary_currency" — валюта.
+        "url": vacancy.get("alternate_url")                  # "url" — ссылка на вакансию.
+    }
+
+
+def parse_vacancies(vacancies: List[Dict]) -> List[Dict]:
+    """Применяет parse_vacancy ко всем вакансиям в списке."""
+    # Обёртка для пакетной обработки списка вакансий.
+    # Автоматически проходит по всем вакансиям из API и возвращает их в стандартизированном виде,
+    # чтобы можно было сразу вызывать DBManager.insert_vacancies(parsed_list).
+    # vacancies: List[Dict] — входной аргумент: список словарей, каждый из которых представляет вакансию,
+    # как её возвращает API HH.ru.
+    # Возвращает List[Dict] — список уже «очищенных» словарей, готовых для вставки в базу данных.
+
+    # Используется list comprehension: для каждой вакансии v из списка vacancies вызывается функция parse_vacancy(v).
+    # Результатом работы будет новый список словарей, где каждая вакансия уже подготовлена для базы данных.
+    return [parse_vacancy(v) for v in vacancies]

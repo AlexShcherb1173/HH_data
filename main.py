@@ -66,67 +66,138 @@
 # if __name__ == "__main__":
 #     main()
 
-import os
-from dotenv import load_dotenv
-from src.hh_api import HHApi
-from src.db_manager import DBManager, DBConfig
-from src.services import safe_get_salary
-from src.db_config import DBConfig
+# import os
+# from dotenv import load_dotenv
+# from src.hh_api import HHApi
+# from src.db_manager import DBManager, DBConfig
+# from src.services import safe_get_salary
+# # from src.db_config import DBConfig
 
 
 
 # --- Компании для парсинга (5 IT-компаний) ---
-COMPANIES = [3529, 78638, 1740, 39305, 3776]  # Яндекс, Kaspersky, 1C, Лаборатория Касперского, Сбер
+# COMPANIES = [3529, 78638, 1740, 39305, 3776]  # Яндекс, Kaspersky, 1C, Лаборатория Касперского, Сбер
+#
+# def main():
+#     load_dotenv()
+#
+#     config = DBConfig()
+#     dbm = DBManager(config)
+#     dbm.create_tables()
+#
+#     try:
+#         with dbm._get_conn() as conn:
+#             print("Подключение к БД успешно!")
+#     except Exception as e:
+#         print(f"Ошибка подключения: {e}")
+#
+#     db_config = DBConfig(
+#         name=os.getenv("DB_NAME"),
+#         user=os.getenv("DB_USER"),
+#         password=os.getenv("DB_PASSWORD"),
+#         host=os.getenv("DB_HOST"),
+#         port=os.getenv("DB_PORT"),
+#     )
+#
+#     dbm = DBManager(db_config)
+#     dbm.create_tables()
+#
+#     api = HHApi(COMPANIES)
+#     all_data = api.get_all_data()
+#
+#     # Заполняем таблицы
+#     for block in all_data:
+#         company = block["company"]
+#         dbm.insert_company(company)
+#
+#         for vacancy in block["vacancies"]:
+#             salary_from, salary_to, currency = safe_get_salary(vacancy)
+#             vacancy["salary_from"], vacancy["salary_to"], vacancy["salary_currency"] = salary_from, salary_to, currency
+#             dbm.insert_vacancy(vacancy, int(company["id"]))
+#
+#     # --- Пользовательский интерфейс ---
+#     print("Компании и количество вакансий:")
+#     for row in dbm.get_companies_and_vacancies_count():
+#         print(f"{row['name']}: {row['vacancies_count']} вакансий")
+#
+#     print("\nСредняя зарплата по всем вакансиям:")
+#     print(dbm.get_avg_salary())
+#
+#     keyword = input("\nВведите ключевое слово для поиска вакансий: ")
+#     for row in dbm.get_vacancies_with_keyword(keyword):
+#         print(f"{row['company']} | {row['vacancy']} | {row['salary_from']} - {row['salary_to']} {row['salary_currency']} | {row['url']}")
+#
+#
+# if __name__ == "__main__":
+#     main()
+
+# def main():
+#     load_dotenv()
+#
+#     db_config = DBConfig(
+#         name=os.getenv("DB_NAME"),
+#         user=os.getenv("DB_USER"),
+#         password=os.getenv("DB_PASSWORD"),
+#         host=os.getenv("DB_HOST"),
+#         port=int(os.getenv("DB_PORT"))
+#     )
+#
+#     dbm = DBManager(db_config)
+#     dbm.create_tables()
+#     print("Таблицы созданы успешно!")
+#
+#     companies = dbm.get_companies_and_vacancies_count()
+#     for c in companies:
+#         print(c)
+#
+# if __name__ == "__main__":
+#     main()
+
+from src.db_manager import DBManager, DBConfig
+from src.hh_api import HHApi
+import os
+from dotenv import load_dotenv
+from src.services import format_vacancy
+
+
+load_dotenv()
+
+
+
+def user_interface(dbm: DBManager):
+    """
+    Простой текстовый интерфейс для поиска вакансий по ключевому слову.
+    """
+    keyword = input("Введите ключевое слово для поиска вакансий: ").strip()
+    results = dbm.get_vacancies_with_keyword(keyword)
+    if not results:
+        print("Вакансии не найдены.")
+        return
+    for vac in results:
+        print(format_vacancy(vac))
 
 def main():
-    load_dotenv()
-
-    config = DBConfig()
-    dbm = DBManager(config)
-    dbm.create_tables()
-
-    try:
-        with dbm._get_conn() as conn:
-            print("Подключение к БД успешно!")
-    except Exception as e:
-        print(f"Ошибка подключения: {e}")
-
     db_config = DBConfig(
         name=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
+        port=int(os.getenv("DB_PORT"))
     )
-
     dbm = DBManager(db_config)
     dbm.create_tables()
 
-    api = HHApi(COMPANIES)
-    all_data = api.get_all_data()
+    hh = HHApi()
+    companies = hh.get_companies()  # топ-15 IT компаний
+    dbm.insert_companies(companies)
 
-    # Заполняем таблицы
-    for block in all_data:
-        company = block["company"]
-        dbm.insert_company(company)
+    for c in companies:
+        vacancies = hh.get_vacancies_for_company(c["id"])
+        dbm.insert_vacancies(vacancies)
 
-        for vacancy in block["vacancies"]:
-            salary_from, salary_to, currency = safe_get_salary(vacancy)
-            vacancy["salary_from"], vacancy["salary_to"], vacancy["salary_currency"] = salary_from, salary_to, currency
-            dbm.insert_vacancy(vacancy, int(company["id"]))
-
-    # --- Пользовательский интерфейс ---
-    print("Компании и количество вакансий:")
-    for row in dbm.get_companies_and_vacancies_count():
-        print(f"{row['name']}: {row['vacancies_count']} вакансий")
-
-    print("\nСредняя зарплата по всем вакансиям:")
-    print(dbm.get_avg_salary())
-
-    keyword = input("\nВведите ключевое слово для поиска вакансий: ")
-    for row in dbm.get_vacancies_with_keyword(keyword):
-        print(f"{row['company']} | {row['vacancy']} | {row['salary_from']} - {row['salary_to']} {row['salary_currency']} | {row['url']}")
-
+    # Пример использования аналитики
+    print(dbm.get_companies_and_vacancies_count())
+    print(dbm.get_all_vacancies())
 
 if __name__ == "__main__":
     main()
