@@ -8,8 +8,26 @@ from src.services import format_vacancy
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-load_dotenv(encoding="utf-8")
+#load_dotenv(encoding="utf-8", override=True)
+def load_env_safe() -> None:
+    try:
+        load_dotenv(encoding="utf-8", override=True)
+    except UnicodeDecodeError as e:
+        print(f"Предупреждение: .env не в UTF-8 ({e}). Повторная загрузка без encoding...")
+        load_dotenv(override=True)
 
+
+def sanitize_env(val: str | None) -> str | None:
+    if val is None:
+        return None
+    # Удаляем невидимые и неразрывные пробелы/кавычки
+    return (
+        val.replace("\u00A0", " ")  # NBSP
+           .replace("\u200B", "")   # zero-width space
+           .replace("“", '"').replace("”", '"').replace("’", "'")
+           .strip()
+    )
+load_env_safe()
 
 def safe_hh_request(func, *args, retries=3, delay=2, **kwargs):
     """
@@ -32,8 +50,37 @@ def safe_hh_request(func, *args, retries=3, delay=2, **kwargs):
                 print("Не удалось получить данные после нескольких попыток.")
                 return []
 
+def wait_for_db(db: DBManager, retries: int = 10, delay: float = 1.5) -> bool:
+    """
+    Пытается получить соединение с БД несколько раз, чтобы дождаться готовности сервера.
+    Возвращает True при успехе, False при неудаче.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            # быстрый ping через открытие и закрытие соединения
+            with db._get_conn() as conn:  # type: ignore[attr-defined]
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1;")
+            return True
+        except Exception as e:
+            print(f"Не удалось подключиться к БД (попытка {attempt}/{retries}): {e}")
+            time.sleep(delay)
+    return False
+
 
 def main():
+    # Читаем env и санитизируем
+    name = sanitize_env(os.getenv("DB_NAME")) or "hh_db"
+    user = sanitize_env(os.getenv("DB_USER")) or "postgres"
+    password = sanitize_env(os.getenv("DB_PASSWORD")) or "postgres"
+    host = sanitize_env(os.getenv("DB_HOST")) or "localhost"
+    port_str = sanitize_env(os.getenv("DB_PORT")) or "5432"
+    try:
+        port = int(port_str)
+    except ValueError:
+        print(f"Некорректный DB_PORT='{port_str}', используется 5432")
+        port = 5432
+
     # --- Настройка подключения к базе ---
     db_config = DBConfig(
         name=os.getenv("DB_NAME", "hh_db"),
@@ -43,6 +90,16 @@ def main():
         port=int(os.getenv("DB_PORT", 5432))
     )
     db = DBManager(db_config)
+
+    # Перед созданием таблиц — дождаться доступности БД
+    if not wait_for_db(db):
+        print(
+            "База данных недоступна. Проверьте, что PostgreSQL запущен и параметры подключения корректны:\n"
+            f"DB_HOST={db_config.host} DB_PORT={db_config.port} DB_NAME={db_config.name} "
+            f"DB_USER={db_config.user}"
+        )
+        return
+
     db.create_tables()
 
     # --- Создание API клиента HH.ru ---
