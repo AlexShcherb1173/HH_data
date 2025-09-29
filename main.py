@@ -50,7 +50,7 @@ def safe_hh_request(func, *args, retries=3, delay=2, **kwargs):
                 print("Не удалось получить данные после нескольких попыток.")
                 return []
 
-def wait_for_db(db: DBManager, retries: int = 10, delay: float = 1.5) -> bool:
+def wait_for_db(db: DBManager, retries: int = 5, delay: float = 1.5) -> bool:
     """
     Пытается получить соединение с БД несколько раз, чтобы дождаться готовности сервера.
     Возвращает True при успехе, False при неудаче.
